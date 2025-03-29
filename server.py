@@ -15,18 +15,15 @@ cursor = db.cursor()
 
 @app.route('/receive_data', methods=['POST'])
 def receive_data():
-    data = request.json  # Expecting JSON input
-    username = data.get("username")  # Unique user identifier
-    temperature = data.get("temperature")  # Example data
+    data = request.json 
+    username = data.get("username") 
+    temperature = data.get("temperature") 
 
     if not username or not temperature:
         return jsonify({"error": "Missing data"}), 400
 
-    # Table name based on username (sanitize input to prevent SQL injection)
-    table_name = f"user_{username.replace('-', '_')}"  # Replace invalid chars
-
-    # Create table dynamically if not exists
-    create_table_query = f"""
+    table_name = f"user_{username.replace('-', '_')}"  
+   create_table_query = f"""
     CREATE TABLE IF NOT EXISTS {table_name} (
         id INT AUTO_INCREMENT PRIMARY KEY,
         temperature FLOAT,
@@ -36,7 +33,6 @@ def receive_data():
     cursor.execute(create_table_query)
     db.commit()
 
-    # Insert data into the user-specific table
     insert_query = f"INSERT INTO {table_name} (temperature) VALUES (%s);"
     cursor.execute(insert_query, (temperature,))
     db.commit()
@@ -44,4 +40,4 @@ def receive_data():
     return jsonify({"message": f"Data stored in table {table_name}"}), 200
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)  # Listen on all interfaces
+    app.run(host='0.0.0.0', port=5000, debug=True)  
