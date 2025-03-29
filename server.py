@@ -1,35 +1,47 @@
-from scapy.all import sniff, IP, TCP, UDP
-import datetime
+from flask import Flask, request, jsonify
+import mysql.connector
 
-SUSPICIOUS_PORTS = {23, 2323, 4444, 5555, 6667, 8080, 31337}
-SUSPICIOUS_IPS = {"192.168.1.100"} 
+app = Flask(__name__)
 
-def log_alert(message):
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_entry = f"[{timestamp}] {message}\n"
-    print(log_entry, end="") 
-    with open("intrusion_logs.txt", "a") as log_file:
-        log_file.write(log_entry)
+# Database connection
+db = mysql.connector.connect(
+    host="your_ip_address",
+    user="your_db_user",
+    password="your_db_password",
+    database="mydb"
+)
 
-def process_packet(packet):
-    if IP in packet:
-        src_ip = packet[IP].src
-        dst_ip = packet[IP].dst
-        protocol = packet[IP].proto
+cursor = db.cursor()
 
-        if TCP in packet or UDP in packet:
-            dst_port = packet[TCP].dport if TCP in packet else packet[UDP].dport
+@app.route('/receive_data', methods=['POST'])
+def receive_data():
+    data = request.json  # Expecting JSON input
+    username = data.get("username")  # Unique user identifier
+    temperature = data.get("temperature")  # Example data
 
-            if dst_port in SUSPICIOUS_PORTS:
-                log_alert(f"⚠️ Suspicious Port Access: {src_ip} -> {dst_ip}:{dst_port}")
+    if not username or not temperature:
+        return jsonify({"error": "Missing data"}), 400
 
-            if src_ip in SUSPICIOUS_IPS:
-                log_alert(f"⚠️ Known Malicious IP Detected: {src_ip} -> {dst_ip}")
+    # Table name based on username (sanitize input to prevent SQL injection)
+    table_name = f"user_{username.replace('-', '_')}"  # Replace invalid chars
 
-def start_ids():
-    print("✅ Starting Basic IDS... Monitoring Traffic...")
-    sniff(prn=process_packet, store=False)
+    # Create table dynamically if not exists
+    create_table_query = f"""
+    CREATE TABLE IF NOT EXISTS {table_name} (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        temperature FLOAT,
+        received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """
+    cursor.execute(create_table_query)
+    db.commit()
 
-if __name__ == "__main__":
-    start_ids()
+    # Insert data into the user-specific table
+    insert_query = f"INSERT INTO {table_name} (temperature) VALUES (%s);"
+    cursor.execute(insert_query, (temperature,))
+    db.commit()
 
+    return jsonify({"message": f"Data stored in table {table_name}"}), 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)  # Listen on all interfaces
