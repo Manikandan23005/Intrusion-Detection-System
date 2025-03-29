@@ -4,44 +4,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Dashboard</title>
+    <title>IDS Dashboard</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="sidebar">
-        <h4 class="text-center">Dashboard</h4>
+        <h4 class="text-center">IDS Dashboard</h4>
         <a href="#"><i class="fas fa-home"></i> Home</a>
-        <a href="#"><i class="fas fa-chart-line"></i> Analytics</a>
+        <a href="#"><i class="fas fa-exclamation-triangle"></i> Alerts</a>
+        <a href="#"><i class="fas fa-network-wired"></i> Network Traffic</a>
+        <a href="#"><i class="fas fa-shield-alt"></i> Security Status</a>
         <a href="#"><i class="fas fa-cog"></i> Settings</a>
         <a href="#"><i class="fas fa-sign-out-alt"></i> Logout</a>
     </div>
     
     <div class="content">
-        <h2>Dashboard Overview</h2>
+        <h2>Intrusion Detection System Overview</h2>
         <div class="row">
             <div class="col-md-4">
-                <div class="card text-white bg-primary">
+                <div class="card text-white bg-danger">
                     <div class="card-body">
-                        <h5 class="card-title">Users</h5>
-                        <p id="users" class="card-text">Loading...</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-white bg-success">
-                    <div class="card-body">
-                        <h5 class="card-title">Sales</h5>
-                        <p id="sales" class="card-text">Loading...</p>
+                        <h5 class="card-title">Total Alerts</h5>
+                        <p id="alerts" class="card-text">Loading...</p>
                     </div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card text-white bg-warning">
                     <div class="card-body">
-                        <h5 class="card-title">Performance</h5>
-                        <p id="performance" class="card-text">Loading...</p>
+                        <h5 class="card-title">High Severity</h5>
+                        <p id="high-severity" class="card-text">Loading...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <h5 class="card-title">Network Traffic</h5>
+                        <p id="traffic" class="card-text">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <h5 class="card-title">System Health</h5>
+                        <p id="system-health" class="card-text">Loading...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card text-white bg-secondary">
+                    <div class="card-body">
+                        <h5 class="card-title">Recent Threats</h5>
+                        <p id="recent-threats" class="card-text">Loading...</p>
                     </div>
                 </div>
             </div>
