@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Log Dashboard</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+    <style>
+        .low { color: green; }
+        .medium { color: orange; }
+        .high { color: red; font-weight: bold; }
+        .log-item {
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-left: 5px solid transparent;
+        }
+        .log-low { 
+            background-color: rgba(40, 167, 69, 0.1); 
+            border-left-color: #28a745;
+        }
+        .log-medium { 
+            background-color: rgba(255, 193, 7, 0.1); 
+            border-left-color: #ffc107;
+        }
+        .log-high { 
+            background-color: rgba(220, 53, 69, 0.1);
+            border-left-color: #dc3545;
+        }
+        .log-field {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: flex-start;
+        }
+        .log-label {
+            min-width: 120px;
+            font-weight: bold;
+            color: #495057;
+        }
+        .log-value {
+            flex: 1;
+            word-break: break-word;
+        }
+        .field-timestamp { color: #6c757d; }
+        .field-event { font-weight: 600; }
+        .field-source { font-family: monospace; background: #f8f9fa; padding: 2px 6px; border-radius: 3px; }
+        .field-message { color: #212529; }
+        .filter-card {
+            margin-bottom: 20px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .filter-body {
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <span class="navbar-brand">
+                <i class="bi bi-shield-lock"></i> Security Log Dashboard
+            </span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/"><i class="bi bi-house-door"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/about"><i class="bi bi-info-circle"></i> About</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        <i class="bi {% if category == 'success' %}bi-check-circle{% elif category == 'warning' %}bi-exclamation-triangle{% elif category == 'danger' %}bi-x-circle{% else %}bi-info-circle{% endif %} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <div class="col-12">
+                <!-- Advanced Filters -->
+                <div class="card filter-card">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="bi bi-funnel"></i> Log Filters
+                        </h4>
+                        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="true">
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="collapse show filter-body" id="filterCollapse">
+                        <div class="card-body">
+                            <form method="POST" class="row g-3">
+                                <!-- User ID Filter -->
+                                <div class="col-md-3">
+                                    <label for="user_id" class="form-label">User ID</label>
+                                    <input type="number" class="form-control" id="user_id" name="user_id" value="{{ filters.user_id }}">
+                                </div>
+                                
+                                <!-- Event Type Filter -->
+                                <div class="col-md-3">
+                                    <label for="event_type" class="form-label">Event Type</label>
+                                    <select class="form-select" id="event_type" name="event_type">
+                                        <option value="">All Events</option>
+                                        {% for event_type in event_types %}
+                                            <option value="{{ event_type }}" {% if filters.event_type == event_type %}selected{% endif %}>{{ event_type }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <!-- Source IP Filter -->
+                                <div class="col-md-3">
+                                    <label for="source_ip" class="form-label">Source IP</label>
+                                    <select class="form-select" id="source_ip" name="source_ip">
+                                        <option value="">All Sources</option>
+                                        {% for ip in source_ips %}
+                                            <option value="{{ ip }}" {% if filters.source_ip == ip %}selected{% endif %}>{{ ip }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <!-- Severity Filter -->
+                                <div class="col-md-3">
+                                    <label for="severity" class="form-label">Severity</label>
+                                    <select class="form-select" id="severity" name="severity">
+                                        <option value="">All Severities</option>
+                                        <option value="low" {% if filters.severity == "low" %}selected{% endif %}>Low</option>
+                                        <option value="medium" {% if filters.severity == "medium" %}selected{% endif %}>Medium</option>
+                                        <option value="high" {% if filters.severity == "high" %}selected{% endif %}>High</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Date Range Filter -->
+                                <div class="col-md-3">
+                                    <label for="date_from" class="form-label">From Date</label>
+                                    <input type="date" class="form-control" id="date_from" name="date_from" value="{{ filters.date_from }}">
+                                </div>
+                                
+                                <div class="col-md-3">
+                                    <label for="date_to" class="form-label">To Date</label>
+                                    <input type="date" class="form-control" id="date_to" name="date_to" value="{{ filters.date_to }}">
+                                </div>
+                                
+                                <!-- Filter Buttons -->
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-primary me-2">
+                                        <i class="bi bi-search"></i> Apply Filters
+                                    </button>
+                                    <a href="/" class="btn btn-outline-secondary">
+                                        <i class="bi bi-x-circle"></i> Clear Filters
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Results Section -->
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h4 class="mb-0">
+                            <i class="bi bi-list-ul"></i> Security Log Results
+                            {% if filters.user_id %}
+                                <span class="badge bg-info ms-2">User ID: {{ filters.user_id }}</span>
+                            {% endif %}
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        {% set total_logs = logs.low|length + logs.medium|length + logs.high|length %}
+                        
+                        {% if total_logs > 0 %}
+                            <!-- Severity Tabs -->
+                            <ul class="nav nav-tabs mb-3" id="severityTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-logs" type="button" role="tab">
+                                        All <span class="badge bg-secondary ms-1">{{ total_logs }}</span>
+                                    </button>
+                                </li>
+                                {% if logs.high|length > 0 %}
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link text-danger" id="high-tab" data-bs-toggle="tab" data-bs-target="#high-logs" type="button" role="tab">
+                                        High <span class="badge bg-danger ms-1">{{ logs.high|length }}</span>
+                                    </button>
+                                </li>
+                                {% endif %}
+                                {% if logs.medium|length > 0 %}
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link text-warning" id="medium-tab" data-bs-toggle="tab" data-bs-target="#medium-logs" type="button" role="tab">
+                                        Medium <span class="badge bg-warning text-dark ms-1">{{ logs.medium|length }}</span>
+                                    </button>
+                                </li>
+                                {% endif %}
+                                {% if logs.low|length > 0 %}
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link text-success" id="low-tab" data-bs-toggle="tab" data-bs-target="#low-logs" type="button" role="tab">
+                                        Low <span class="badge bg-success ms-1">{{ logs.low|length }}</span>
+                                    </button>
+                                </li>
+                                {% endif %}
+                            </ul>
+                            
+                            <!-- Tab Content -->
+                            <div class="tab-content" id="severityTabContent">
+                                <!-- All Logs Tab -->
+                                <div class="tab-pane fade show active" id="all-logs" role="tabpanel">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-striped" id="allLogsTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Timestamp</th>
+                                                    <th>Event Type</th>
+                                                    <th>Source IP</th>
+                                                    <th>Message</th>
+                                                    <th>Severity</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for log in logs.high %}
+                                                <tr>
+                                                    <td>{{ log.timestamp }}</td>
+                                                    <td>{{ log.event_type }}</td>
+                                                    <td><code>{{ log.source_ip }}</code></td>
+                                                    <td>{{ log.message }}</td>
+                                                    <td><span class="badge bg-danger">High</span></td>
+                                                </tr>
+                                                {% endfor %}
+                                                {% for log in logs.medium %}
+                                                <tr>
+                                                    <td>{{ log.timestamp }}</td>
+                                                    <td>{{ log.event_type }}</td>
+                                                    <td><code>{{ log.source_ip }}</code></td>
+                                                    <td>{{ log.message }}</td>
+                                                    <td><span class="badge bg-warning text-dark">Medium</span></td>
+                                                </tr>
+                                                {% endfor %}
+                                                {% for log in logs.low %}
+                                                <tr>
+                                                    <td>{{ log.timestamp }}</td>
+                                                    <td>{{ log.event_type }}</td>
+                                                    <td><code>{{ log.source_ip }}</code></td>
+                                                    <td>{{ log.message }}</td>
+                                                    <td><span class="badge bg-success">Low</span></td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                
+                                <!-- High Severity Tab -->
+                                <div class="tab-pane fade" id="high-logs" role="tabpanel">
+                                    {% if logs.high %}
+                                        {% for log in logs.high %}
+                                            <div class="log-item log-high">
+                                                <div class="log-field">
+                                                    <div class="log-label">Timestamp:</div>
+                                                    <div class="log-value field-timestamp">{{ log.timestamp }}</div>
+                                                </div>
+                                                <div class="log-field">
+                                                    <div class="log-label">Event Type:</div>
+                                                    <div class="log-value field-event">{{ log.event_type }}</div>
+                                                </div>
+                                                <div class="log-field">
+                                                    <div class="log-label">Source IP:</div>
+                                                    <div class="log-value"><span class="field-source">{{ log.source_ip }}</span></div>
+                                                </div>
+                                                <div class="log-field">
+                                                    <div class="log-label">Message:</div>
+                                                    <div class="log-value field-message">{{ log.message }}</div>
+                                                </div>
+                                                <div class="log-field">
+                                                    <div class="log-label">Severity:</div>
+                                                    <div class="log-value"><span class="badge bg-danger">High</span></div>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <p class="text-muted">No high severity logs found.</p>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Medium Severity Tab -->
+                                <div class="tab-pane fade" id="medium-logs" role="tabpanel">
+                                    {% if logs.medium %}
+                                        {% for log in logs.medium %}
+                                            <div class="log-item log-medium">
+                                                <div class="log-field">
+                                                    <div class="log-label">Timestamp:</div>
+                                                    <div class="log-value field-timestamp">{{ log.timestamp }}</div>
+                                                </div>
+                                                <div class="log-field">
+                                                    <div class="log-label">Event Type:</div>
+                                                    <div class="log-value field-event">{{ log.event_type }}</div>
+                                                </div>
+                                                <div class="log-field">
+                                                    <div class="log-label">Source IP:</div>
+                                                    <div class="log-value"><span class="field-source">{{ log.source_ip }}</span></div>
+                                                </div>
+                                                <div class="log-field">
+                                                    <div class="log-label">Message:</div>
+                                                    <div class="log-value field-message">{{ log.message }}</div>
+                                                </div>
+                                                <div class="log-field">
+                                                    <div class="log-label">Severity:</div>
+                                                    <div class="log-value"><span class="badge bg-warning text-dark">Medium</span></div>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <p class="text-muted">No medium severity logs found.</p>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Low Severity Tab -->
+                                <div class="tab-pane fade" id="low-logs" role="tabpanel">
+                                    {% if logs.low %}
+                                        {% for log in logs.low %}
+                                            <div class="log-item log-low">
+                                                <div class="log-field">
+                                                    <div class="log-label">Timestamp:</div>
+                                                    <div class="log-value field-timestamp">{{ log.timestamp }}</div>
+                                                </div>
+                                                <div class="log-field">
+                                                    <div class="log-label">Event Type:</div>
+                                                    <div class="log-value field-event">{{ log.event_type }}</div>
+                                                </div>
+                                                <div class="log-field">
+                                                    <div class="log-label">Source IP:</div>
+                                                    <div class="log-value"><span class="field-source">{{ log.source_ip }}</span></div>
+                                                </div>
+                                                <div class="log-field">
+                                                    <div class="log-label">Message:</div>
+                                                    <div class="log-value field-message">{{ log.message }}</div>
+                                                </div>
+                                                <div class="log-field">
+                                                    <div class="log-label">Severity:</div>
+                                                    <div class="log-value"><span class="badge bg-success">Low</span></div>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <p class="text-muted">No low severity logs found.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="bi bi-search" style="font-size: 4rem; color: #6c757d;"></i>
+                                <p class="lead mt-3">No logs found matching your criteria.</p>
+                                <p class="text-muted">Try adjusting your filters or select a different user ID.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+    
+    <script>
+        $(document).ready(function () {
+            // Initialize DataTable for all logs
+            $('#allLogsTable').DataTable({
+                responsive: true,
+                order: [[0, 'desc']], // Sort by timestamp descending
+                language: {
+                    search: "Quick search:",
+                    lengthMenu: "Show _MENU_ logs per page",
+                    info: "Showing _START_ to _END_ of _TOTAL_ logs",
+                    paginate: {
+                        first: '<i class="bi bi-chevron-double-left"></i>',
+                        last: '<i class="bi bi-chevron-double-right"></i>',
+                        next: '<i class="bi bi-chevron-right"></i>',
+                        previous: '<i class="bi bi-chevron-left"></i>'
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
