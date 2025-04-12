@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # For flash messages
-DATABASE = "../ids.db"  # Ensure this is your database file
+DATABASE = "ids.db"  # Ensure this is your database file
 
 def get_db():
     """Connects to the SQLite database."""
