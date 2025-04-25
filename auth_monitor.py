@@ -6,7 +6,12 @@ from alert import send_email
 from client_api import add_log
 ip=""
 import json
+from user import block_ip
 uid=0
+from collections import defaultdict
+
+failed_attempts = defaultdict(int)
+
 with open('config.json') as file:
     data = json.load(file)
     uid=(data['user_id'])
@@ -41,6 +46,7 @@ class AuthLogMonitor:
                 else:
                     return
             print(msg)
+            failed_attempts[ip] = 0
             send_email("SSH Login Successful", msg)
             add_log(uid,"Login Attempt","Unknown or Local" if ip=="" else ip ,msg,"medium")
             return
@@ -61,6 +67,11 @@ class AuthLogMonitor:
                 else:
                     return
             print(msg)
+            failed_attempts[ip] += 1
+            if failed_attempts[ip] > 5:
+                print(f"🚨 Too many failed login attempts from {ip}, blocking the IP...")
+                block_ip(ip)  
+                failed_attempts[ip] = 0  
             send_email("SSH Login Failed", msg)
             add_log(uid,"Login Attempt","Unknown or Local" if ip=="" else ip ,msg,"high")
             return

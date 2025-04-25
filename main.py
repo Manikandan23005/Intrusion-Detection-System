@@ -3,6 +3,13 @@ from auth_monitor import AuthLogMonitor
 from nmap_detector import start_sniffing
 import threading
 import time
+import subprocess
+
+def block_ip(ip_address):
+    subprocess.run([ "iptables", "-A", "INPUT", "-s", ip_address, "-j", "DROP"])
+
+def block_mac(mac_address):
+    subprocess.run([ "ebtables", "-A", "INPUT", "-s", mac_address, "-j", "DROP"])
 
 if __name__ == "__main__":
     print("[INFO] Starting journalctl auth monitor...")

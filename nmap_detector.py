@@ -5,6 +5,7 @@ from alert import send_email
 from collections import defaultdict
 import time
 from client_api import add_log
+from user import block_ip
 import json
 uid=0
 with open('config.json') as file:
@@ -12,8 +13,8 @@ with open('config.json') as file:
     uid=(data['user_id'])
 
 scan_tracker = defaultdict(list)
-SCAN_THRESHOLD = 10  # Number of ports accessed within TIME_WINDOW to consider a scan
-TIME_WINDOW = 10     # Time in seconds
+SCAN_THRESHOLD = 10 
+TIME_WINDOW = 10     
 
 def detect_nmap(pkt):
     if pkt.haslayer(IP) and pkt.haslayer(TCP):
@@ -33,7 +34,8 @@ def detect_nmap(pkt):
             print(msg)
             send_email("Nmap/Port Scan Detected", msg)
             add_log(uid,"Nmap/Port Scan Detected","Unknown",msg,"high")
-            scan_tracker[src_ip] = []  # Reset after detection
+            block_ip(src_ip)
+            scan_tracker[src_ip] = []  
 
 def start_sniffing():
     print("[INFO] Starting network monitor for port scans...")
