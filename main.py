@@ -24,7 +24,6 @@ if __name__ == "__main__":
     print("[INFO] Starting network monitor...")
     sniff_thread = threading.Thread(target=start_sniffing, daemon=True)
     sniff_thread.start()
-
     # Keep main thread alive
     try:
         while True:
