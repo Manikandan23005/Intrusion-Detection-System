@@ -52,6 +52,7 @@ sudo chmod +x "$INSTALL_PATH"
 
 # Cleanup
 rm "$LAUNCHER_SCRIPT"
+python -m pip install PySide6
 
 echo "[✓] Installation complete!"
 echo "You can now run: ids, ids --debug, or ids --config from anywhere"
